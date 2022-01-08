@@ -1,0 +1,55 @@
+version: "3"
+services:
+
+  mongo:
+    image: mongo
+    restart: always
+    container_name: mymongodb
+    ports:
+      - "27017:27017"
+    networks:
+      - dock_net
+    command: [--auth]
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: marketboard
+      
+    volumes:
+      - './data:/data/db'
+      - ./mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+
+  backend:
+    depends_on:
+      - mongo
+    container_name: backend
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    ports:
+      - "5000:5000"
+    networks:
+      - dock_net
+    environment:
+      MONGODB_URL: mongodb://root:example@mongo:27017/marketboard
+
+  frontend:
+    depends_on:
+      - backend
+    container_name: frontend
+    links:
+      - backend
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    networks:
+      - dock_net
+    environment:
+      BACK_URL: http://backend:5000
+    
+
+networks:
+  dock_net:
+    driver: bridge
